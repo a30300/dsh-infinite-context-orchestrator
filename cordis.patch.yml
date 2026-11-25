@@ -1,0 +1,58 @@
+# dsh-infinite-context-orchestrator 的 Host 平面装配行（bundle patch）。
+#
+# 致谢：本插件的判据与契约来自 dsh-context-relay（rezon-aki）、
+# dsh-task-checkpoint-guard（jlnkx5200-beep）、dsh-project-progress（Jolly-J）、
+# dsh-context-window（qq-24）；均为 MIT，详见 CREDITS.md。
+#
+# 安装（二选一）：
+#   1) npm：dsh plugin --profile <profile> add dsh-infinite-context-orchestrator
+#   2) 本地目录：dsh plugin --profile <profile> add "C:\\path\\to\\dsh-infinite-context-orchestrator"
+#
+# 全部 Config 默认值都显式写在这里：profile 的 patch 对同一 entry 是「整体替换 config」
+# 语义，你在自己的 cordis.patch.yml 里覆盖同一个 id 时，要重述所有想保留的字段
+# （本段即是完整清单，可直接复制修改）。
+- insert:
+    - id: infinite-context-orchestrator
+      name: dsh-infinite-context-orchestrator
+      config:
+        # 总开关。false 时：不监听占用、不提醒、不换窗；工具仍注册，但 handoff 会拒绝执行。
+        enabled: false
+
+        # 单次插件加载内允许的自动换窗次数上限（0 = 不限制）。
+        maxAutoHandoffs: 10
+
+        # 逐模型真实上下文窗口（键：`provider/model` 或 `model`）。设置页可「读取模型列表」逐个填。
+        # 填了就用填的值算百分比；没填则用 DSH/服务器读到的窗口。
+        contextWindowByModel: {}
+
+        # 按模型的百分比阈值（键同上），0-99；0 = 该模型不启用。
+        # 只管理这里列出的模型；既没配窗口也没配阈值的模型，插件完全不介入。
+        thresholdByModel: {}
+
+        # true = 到阈值自动执行完整闭环（写检查点 → 开新窗 → 注入简报）。
+        # false = 只发提醒，等用户手动调用 infinite_context_handoff。
+        autoHandoff: false
+
+        # 换窗后是否在旧窗口写一条「任务已转移」的会话消息（不唤醒旧窗口）。
+        notifyTransferredSession: true
+
+        # 交接成功后把旧窗口的待办标成已完成（避免它一直挂着"进行中"的假任务）。
+        markTodosHandedOff: true
+
+        # 检查点 JSON 的 UTF-8 字节上限；0 = 不限制。超限先裁剪，仍超限则写入失败且不换窗（fail-closed）。
+        checkpointMaxBytes: 65536
+
+        # 注入新会话首轮的交接简报字符上限；0 = 不限制（不裁剪条目与字数）。
+        handoffBriefMaxChars: 4000
+
+        # 可选。检查点根目录；留空表示 ${DSH_HOME:-~/.dsh}/task-checkpoints/orchestrator。
+        checkpointRoot: ''
+
+        # 从简报预算里预留给 PROGRESS.md 项目级摘要的字符数；0 = 不带；-1 = 不限制。
+        projectProgressReserveChars: 1200
+
+        # 简报由谁写：plugin = 插件模板（确定性）；model = 换窗前让模型写一份叙述性简报。
+        briefAuthor: plugin
+
+        # 交接时把「原始需求」原文一路带进检查点与简报（默认开）。
+        carryOriginalRequest: true

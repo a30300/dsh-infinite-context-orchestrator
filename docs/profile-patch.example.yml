@@ -1,0 +1,54 @@
+# profile 覆盖示例（不含任何本机路径）
+#
+# 用法：把下面整段追加到你自己的
+#   %USERPROFILE%\\.dsh\\profiles\\<profile>\\cordis.patch.yml
+# 末尾（它是顶层数组，保持与前面的 `- id:` 同级缩进）。
+#
+# 注意：profile 的 patch 对同一 entry 是「整体替换 config」语义 ——
+# 没写的字段会回落到 bundle 层默认值，所以要重述所有想保留的字段。
+- id: infinite-context-orchestrator
+  name: dsh-infinite-context-orchestrator
+  config:
+    # 总开关。false = 插件完全不动作（工具仍注册，但 handoff 拒绝执行）。
+    enabled: true
+
+    # 单次加载内允许的自动换窗次数上限（0 = 不限制）。
+    maxAutoHandoffs: 10
+
+    # 逐模型真实窗口（键：provider/model 或 model）。例：
+    # contextWindowByModel:
+    #   ninfer1/swift-1.5-qwen3.8-27b: 64000
+    #   deepseek-account/deepseek-chat: 131072
+    contextWindowByModel: {}
+
+    # 按模型阈值（键同上），0-99；0 = 该模型不启用。
+    # 只管理这里列出的模型；没列出的模型插件完全不介入。
+    thresholdByModel: {}
+
+    # true = 到阈值自动换窗；false = 只提醒，等用户调用工具。
+    autoHandoff: false
+
+    # 换窗后是否在旧窗口写一条「任务已转移」的会话消息。
+    notifyTransferredSession: true
+
+    # 交接成功后把旧窗口未完成的待办标成已完成。
+    markTodosHandedOff: true
+
+    # 检查点 JSON 字节上限；0 = 不限制。
+    checkpointMaxBytes: 65536
+
+    # 简报字符上限；0 = 不限制。
+    handoffBriefMaxChars: 4000
+
+    # 可选；留空 = ${DSH_HOME}/task-checkpoints/orchestrator
+    # 不要指向 dsh-task-checkpoint-guard 正在用的目录本身（它会写 tasks/ 与 sessions/）。
+    checkpointRoot: ''
+
+    # 留给 PROGRESS.md 项目摘要的字符数：0 = 不带；-1 = 不限制。
+    projectProgressReserveChars: 1200
+
+    # plugin = 插件模板；model = 让模型写叙述性简报（多一次调用，失败回退模板）。
+    briefAuthor: plugin
+
+    # 交接时带上原始需求原文（默认开）。
+    carryOriginalRequest: true

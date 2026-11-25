@@ -1,0 +1,85 @@
+{
+  "name": "dsh-infinite-context-orchestrator",
+  "version": "0.1.0",
+  "description": "上下文快满时自动换窗：写交接检查点 → 开新会话 → 注入简报，让长任务跨窗口继续。",
+  "type": "module",
+  "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./client": "./client.js"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/types",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "USERGUIDE.md",
+    "LICENSE",
+    "CREDITS.md",
+    "CHANGELOG.md",
+    "docs",
+    "scripts/repair-sessions.mjs"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=node --target=node20 --external:node:* --legal-comments=none --outfile=lib/index.js && node node_modules/typescript/bin/tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "npm run typecheck && npm run build && node --check lib/index.js && npm run smoke && npm run smoke:client",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:client": "node scripts/smoke-client.mjs",
+    "repair-sessions": "node scripts/repair-sessions.mjs",
+    "pack:check": "npm pack --dry-run",
+    "prepublishOnly": "npm run check"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "context-window",
+    "handoff",
+    "checkpoint",
+    "context-compaction",
+    "session-handoff"
+  ],
+  "license": "MIT",
+  "author": "dsh-infinite-context-orchestrator contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator.git"
+  },
+  "homepage": "https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator#readme",
+  "bugs": {
+    "url": "https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator/issues"
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "^3.19.0",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
+  }
+}

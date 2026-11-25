@@ -1,0 +1,17 @@
+# 依赖（只在开发/构建时需要；运行时零依赖，lib 已内联 schemastery）
+node_modules/
+
+# 构建中间产物（lib/ 本身要入库，不要忽略）
+*.tsbuildinfo
+
+# 本机相关：profile 备份、本地配置、日志
+docs/*.local.yml
+docs/profile-patch-desktop.good.yml
+*.log
+.cache/
+tmp/
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
