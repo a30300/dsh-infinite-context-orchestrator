@@ -19,6 +19,17 @@ Keep a long task going across context limits: write a checkpoint, open a new ses
 
 ---
 
+### 关于本项目：构建方式与二次改造
+
+本项目的**代码、测试与文档主要由 DeepSeek V4.1-Flash 构建**；需求、评审与验收由作者 a30300 完成。
+
+除 [MIT](LICENSE) 授予的权利之外，作者**明确欢迎并允许任何人二次改造**：fork、改名、改行为、
+拆成你自己的插件、闭源分发、商用，都可以，**无需另行取得许可**。唯一的请求是保留 [LICENSE](LICENSE)
+与本项目「致谢与来源」里的署名 —— 那几项是对上游作者的基本尊重。
+
+如果你改造出了有用的东西，欢迎提 issue 或 PR 回来，让原作者也能用上。
+
+
 ### 安装形态（复制安装 vs 链接安装）
 
 dsh plugin add <目录> 建的是**Junction（链接）**：DSH 加载的其实是工作区里的文件，整理工作区会影响已安装的插件。
@@ -213,6 +224,20 @@ pnpm run check          # 上面全部 + 类型检查（发布门禁）
 **What it does**: when the context approaches its limit, it first writes the current progress into a **handoff checkpoint**, then opens a **new session**, and puts the *original requirement / current goal / completed work / pending todos / constraints* at the very top of that new session. The new window therefore knows what to continue from its first sentence, and you do not have to repeat yourself.
 
 ---
+
+### About this project: how it was built, and remixing
+
+The **code, tests and documentation were built mainly with DeepSeek V4.1-Flash**; requirements, review and
+acceptance were done by the author, a30300.
+
+Beyond the rights granted by the [MIT](LICENSE) license, the author **explicitly welcomes and allows anyone to
+remix it**: fork it, rename it, change its behaviour, split it into your own plugin, ship it closed-source, use it
+commercially — **no further permission needed**. The only request is to keep the [LICENSE](LICENSE) and the
+attribution in "Credits" — those are basic respect for the upstream authors.
+
+If you build something useful on top of it, issues and pull requests back are welcome so the original author can
+benefit too.
+
 
 ### Installation: copy install vs link install
 
