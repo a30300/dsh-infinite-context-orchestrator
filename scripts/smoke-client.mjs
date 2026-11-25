@@ -237,6 +237,7 @@ console.log('  ✓ 高级项展开')
   }
   exported.apply(localeCtx)
   assert.equal(localeRegistered, 'infiniteContext', '应注册 infiniteContext 命名空间')
+  assert.equal(englishRegistered.definition.locale, 'infiniteContext', '座位应声明 locale 命名空间（否则切语言不重渲染）')
   assert.ok(dictionaries?.zh?.sectionTitle === '任务自动换窗', '应有中文词典')
   assert.ok(dictionaries?.en?.sectionTitle === 'Auto Handoff', '应有英文词典')
   assert.equal(englishRegistered.definition.label(), 'Auto Handoff', '分区标题应跟随语言')
@@ -253,4 +254,36 @@ console.log('  ✓ 高级项展开')
   console.log('  ✓ 主区文案跟随宿主语言（zh / en）')
 }
 
-console.log('\n客户端冒烟测试通过（9 项）：真实渲染 + 交互提交 + i18n')
+// ── 晚到的 locale 服务：先取不到，等 ctx.inject 回调交付后应能切英文 ──────────
+{
+  let lateDictionary = null
+  let lateHandler = null
+  let lateRegistered = null
+  const lateCtx = {
+    slots: {
+      inject: (_slot, callback) => callback(),
+      register: (definition, component) => { lateRegistered = { definition, component } },
+    },
+    effect: (fn) => fn(),
+    // 模拟"宿主 locale 服务还没就绪"：直接读不到
+    get: (name) => (name === 'locale' ? undefined : undefined),
+    inject: (deps, callback) => { lateHandler = () => callback({ locale: lateService() }) },
+  }
+  const lateService = () => ({
+    register: (_ns, dicts) => { lateDictionary = dicts; return () => undefined },
+    bind: () => (key) => lateDictionary?.en?.[key] ?? lateDictionary?.zh?.[key] ?? key,
+  })
+  exported.apply(lateCtx)
+  assert.equal(lateRegistered.definition.label(), '任务自动换窗', '服务未就绪时应先回落到中文')
+  assert.ok(typeof lateHandler === 'function', 'locale 晚到时应注册等待回调')
+  lateHandler()
+  assert.equal(lateRegistered.definition.label(), 'Auto Handoff', 'locale 晚到后应切换成英文')
+  const lateInstance = new Instance(lateRegistered.component)
+  lateInstance.render()
+  await tick()
+  const lateText = collectText(lateInstance.render()).join('|')
+  assert.ok(lateText.includes('Per-model window & threshold'), '晚到服务后英文主区应生效')
+  console.log('  ✓ locale 服务晚到也能切换（晚到注入）')
+}
+
+console.log('\n客户端冒烟测试通过（10 项）：真实渲染 + 交互提交 + i18n')

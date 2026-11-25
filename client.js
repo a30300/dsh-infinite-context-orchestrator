@@ -291,8 +291,14 @@ const MODELS_API = '/infinite-context/settings?models=1'
       return `HTTP ${res.status} · ${detail}`
     }
 
-    function makePanel(t) {
-        const tr = typeof t === 'function' ? t : fallbackT
+    function makePanel(readTranslate) {
+      // 每次渲染都重新取一次文案函数：宿主 locale 服务可能在本插件 apply 之后才就绪，
+      // 取到之后这里会自动切到真实词典（早先一次性捕获会永久停在中文兜底）。
+      const tr = (key) => {
+        const translate = typeof readTranslate === 'function' ? readTranslate() : readTranslate
+        const value = typeof translate === 'function' ? translate(key) : undefined
+        return typeof value === 'string' ? value : fallbackT(key)
+      }
       return function InfiniteContextSettings(props) {
         if (props && props.view === 'summary') return SUMMARY
 
@@ -846,35 +852,76 @@ const MODELS_API = '/infinite-context/settings?models=1'
         return
       }
       // 主区文案接入宿主 locale（zh + en；其余语言回落到 en）。
-      let t = fallbackT
-      try {
-        // 用 ctx.get 取，而不是写进 inject：没有该服务的宿主仍能加载本插件（只是不翻译）。
-        const locale = typeof ctx.get === 'function' ? ctx.get('locale') : ctx.locale
-        if (locale !== undefined && typeof locale.register === 'function' && typeof locale.bind === 'function') {
-          ctx.effect(() => locale.register('infiniteContext', {
-            zh: MESSAGES.zh,
-            en: MESSAGES.en,
-            ja: MESSAGES.en,
-            es: MESSAGES.en,
-            fr: MESSAGES.en,
-            de: MESSAGES.en,
-            ru: MESSAGES.en,
-            pt: MESSAGES.en,
-          }), 'infinite-context: locale dictionaries')
-          t = locale.bind('infiniteContext')
+      // 注意三点（实测踩过）：
+      //   ① locale 是**可选服务**（ctx.get 取），也可能晚于本插件 apply 就绪 → 必须动态读取，
+      //      并在服务晚到时用 ctx.inject(['locale'], …) 补绑一次；
+      //   ② register 的词典要一次给全 8 个语言 id（宿主只提供 zh/en 基线，其余回落 en）；
+      //   ③ 座位必须声明 locale 命名空间，页面才会在语言切换时重新渲染。
+      const LOCALE_NS = 'infiniteContext'
+      const LOCALE_DICTS = {
+        zh: MESSAGES.zh,
+        en: MESSAGES.en,
+        ja: MESSAGES.en,
+        es: MESSAGES.en,
+        fr: MESSAGES.en,
+        de: MESSAGES.en,
+        ru: MESSAGES.en,
+        pt: MESSAGES.en,
+      }
+      let translate = null
+      const bindLocale = (locale) => {
+        if (translate !== null) return true
+        if (locale === undefined || locale === null) return false
+        if (typeof locale.register !== 'function' || typeof locale.bind !== 'function') return false
+        try {
+          ctx.effect(() => locale.register(LOCALE_NS, LOCALE_DICTS), 'infinite-context: locale dictionaries')
+        } catch (error) {
+          // 重复注册（例如插件被重复 apply）不算失败，绑定文案仍然可用。
+          diag('apply:locale-register', String((error && error.message) || error))
         }
+        try {
+          translate = locale.bind(LOCALE_NS)
+        } catch (error) {
+          diag('apply:locale-bind', String((error && error.message) || error))
+          return false
+        }
+        diag('apply:locale-bound', 'infiniteContext')
+        return true
+      }
+      const lookupLocale = (scope) => {
+        const owner = scope ?? ctx
+        if (owner === undefined || owner === null) return undefined
+        const direct = owner.locale
+        if (direct !== undefined) return direct
+        return typeof owner.get === 'function' ? owner.get('locale') : undefined
+      }
+      try {
+        bindLocale(lookupLocale(ctx))
       } catch (error) {
         diag('apply:locale-unavailable', String((error && error.message) || error))
       }
-      const Panel = makePanel(t)
+
+      const Panel = makePanel(() => translate)
+      // locale 已绑定时才声明命名空间：未注册词典就声明会让座位的 load-time 校验失败，
+      // 那种情况下先注册一个不翻译的座位，等服务晚到再替换。
+      const registerSeat = () => slots.inject('settings.section', () => slots.register({
+        name: 'settings.section',
+        id: 'infinite-context',
+        order: 55,
+        ...(translate === null ? {} : { locale: LOCALE_NS }),
+        label: () => {
+          const read = translate
+          return typeof read === 'function' ? read('sectionTitle') : fallbackT('sectionTitle')
+        },
+      }, Panel))
       try {
-        slots.inject('settings.section', () => slots.register({
-          name: 'settings.section',
-          id: 'infinite-context',
-          order: 55,
-          label: () => t('sectionTitle'),
-        }, Panel))
-        diag('slot:inject', 'settings.section')
+        registerSeat()
+        diag('slot:inject', translate === null ? 'settings.section (no locale)' : 'settings.section')
+        if (translate === null && typeof ctx.inject === 'function') {
+          ctx.inject(['locale'], (scope) => {
+            if (bindLocale(lookupLocale(scope))) diag('slot:relocale', 'locale service arrived late')
+          })
+        }
       } catch (error) {
         diag('slot:FAILED settings.section', String((error && error.message) || error))
       }

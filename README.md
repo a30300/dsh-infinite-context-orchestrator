@@ -43,6 +43,11 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      #
 内置 **中文 / English**；其余语言（ja / es / fr / de / ru / pt）回落到英文。
 长说明文字与插件发给模型的提示目前仍是中文。
 
+> 切换语言后如果设置页没跟着变：**重启 DSH**。客户端半件是启动时加载的，
+> 就像改 `client.js` 之后需要硬刷新一样。仍然不变的话按 `F12` 看控制台有没有
+> `[dsh-infinite-context] apply:locale-bound` 这一行 —— 有它说明词典已注册，
+> 没有则是宿主 locale 服务不可用（那种情况会一直用中文兜底，功能不受影响）。
+
 ### 怎么用
 
 打开 **设置 → 任务自动换窗**，只有三个开关：
@@ -247,7 +252,15 @@ The remaining advanced items usually need no changes (brief length cap, checkpoi
 
 ### Language
 
-The main controls of the settings page follow the DSH interface language: **Chinese and English** are built in, and the other locales (ja / es / fr / de / ru / pt) fall back to English. Long explanatory text and the prompts the plugin sends to the model are currently Chinese.
+The main controls of the settings page follow the DSH interface language: **Chinese and English** are built in,
+and the other locales (ja / es / fr / de / ru / pt) fall back to English. Long explanatory text and the prompts
+the plugin sends to the model are currently Chinese.
+
+> If the settings page does not follow after you switch the language, **restart DSH**: the client half is loaded
+> at startup, the same way `client.js` changes need a hard refresh. If it still does not change, open `F12` and
+> look for a `[dsh-infinite-context] apply:locale-bound` line in the console — its presence means the dictionaries
+> were registered; its absence means the host locale service is unavailable (the page then stays in Chinese, with
+> no functional impact).
 
 ### What you see at the threshold
 
