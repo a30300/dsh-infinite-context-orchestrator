@@ -6,14 +6,14 @@
 
 ```json
 {
-  "author": "<你的名字> <你的邮箱>",
-  "repository": { "type": "git", "url": "git+https://github.com/<你>/dsh-infinite-context-orchestrator.git" },
-  "homepage": "https://github.com/<你>/dsh-infinite-context-orchestrator#readme",
-  "bugs": { "url": "https://github.com/<你>/dsh-infinite-context-orchestrator/issues" }
+  "author": "a30300 (https://github.com/a30300)",
+  "repository": { "type": "git", "url": "git+https://github.com/a30300/dsh-infinite-context-orchestrator.git" },
+  "homepage": "https://github.com/a30300/dsh-infinite-context-orchestrator#readme",
+  "bugs": { "url": "https://github.com/a30300/dsh-infinite-context-orchestrator/issues" }
 }
 ```
 
-- [ ] **[你来做]** 补 `author` / `repository` / `homepage` / `bugs`。
+- [x] `author` / `repository` / `homepage` / `bugs` 已填写（a30300）。
 - [ ] 确认 `version`（当前 `0.1.0`）与 `CHANGELOG.md` 顶部条目一致。
 - [ ] 确认 `license` 为 `MIT`，且仓库里存在 [LICENSE](LICENSE)。
 
