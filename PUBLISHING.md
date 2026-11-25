@@ -78,4 +78,7 @@ README 已就此写了警告；发布时保留这条，能替用户省一次事�
 - `schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS`：schannel 拿不到证书存储，
   改用 OpenSSL 后端即可：`git config http.sslBackend openssl`（仓库内设置，只影响本仓库）。
 - `failed to execute prompt script` / `could not read Username`：凭据助手在受限环境里起不来，
-  在普通终端（非沙箱）里执行一次 `git push`，让 Git Credential Manager 完成一次授权即可。
+  在普通终端（非沙箱）里执行一次 `git push`，让 Git Credential Manager 完成一次授权即可。- `Failed to connect to github.com:443` / `Recv failure: Connection was reset`：直连被重置。
+  用系统代理（本机 `127.0.0.1:7897`）：
+  `git config http.proxy http://127.0.0.1:7897`（代理改用别的端口时同步改，关掉代理后
+  `git config --unset http.proxy` 撤销）。
