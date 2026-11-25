@@ -1,15 +1,302 @@
-# Task Auto-Handoff · 任务自动换窗
+# 任务自动换窗 · Task Auto-Handoff
 
-**dsh-infinite-context-orchestrator** — keep a long task going across context limits: write a checkpoint, open a new session, inject the brief.
-
-**中文**：[README.zh.md](README.zh.md) · **English**：[README.en.md](README.en.md) · **小白指南 / Plain guide**：[USERGUIDE.md](USERGUIDE.md)
+**dsh-infinite-context-orchestrator** — 上下文快满时自动换窗：写检查点 → 开新会话 → 注入简报。
+Keep a long task going across context limits: write a checkpoint, open a new session, inject the brief.
 
 ![设置页：任务自动换窗](docs/screenshot.png)
 
-| | |
+**目录 · Contents**: [中文](#中文) · [English](#english)
+
+---
+
+## 中文
+
+
+> 📖 **第一次用、或者不太想看术语？先读 [USERGUIDE.md](USERGUIDE.md)**（大白话版：它是干什么的、怎么装、怎么设置、常见问题）。
+
+**它解决什么问题**：长任务聊久了，上下文会满，你就得手动总结、重开会话、再把进度讲一遍。
+
+**它怎么做**：快满的时候，它先把当前进度写成一份**交接检查点**，再开一个**新会话**，并把「**原始需求原文** / 当前目标 / 已完成 / 待办 / 必须遵守的约束」放到新会话最前面。于是新窗口从第一句话就知道该接着干什么，你不用再复述。
+
+---
+
+### 安装形态（复制安装 vs 链接安装）
+
+dsh plugin add <目录> 建的是**Junction（链接）**：DSH 加载的其实是工作区里的文件，整理工作区会影响已安装的插件。
+
+本插件提供复制安装脚本，插件目录里放独立副本，工作区只作镜像源：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1              # 默认 profile=desktop
+powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      # 只看会做什么
+```
+
+之后改代码的流程：pnpm run build → 再跑一次脚本 → 重启 DSH。
+
+### 维护工具
+
+- `node scripts/repair-sessions.mjs`：扫描会话日志，找出「在 turn 之外写了 `developer/message`」的坏记录
+  （会表现为 GUI「历史加载失败」）。默认只报告，加 `--apply` 才改写，改写前自动备份 `*.corrupt-bak`。
+
+### 语言
+
+设置页主区（分区名、三个开关、模型列表、高级开关）跟随 DSH 的界面语言，
+内置 **中文 / English**；其余语言（ja / es / fr / de / ru / pt）回落到英文。
+长说明文字与插件发给模型的提示目前仍是中文。
+
+### 怎么用
+
+打开 **设置 → 任务自动换窗**，只有三个开关：
+
+| 选项 | 说明 |
 |---|---|
-| **它解决什么** | 长任务聊久了上下文会满，通常要手工总结、重开会话、再讲一遍进度。开启后，接近阈值时插件自动写交接检查点、开新会话，并把「原始需求 / 目标 / 已完成 / 待办 / 约束」放到新会话最前面。 |
-| **What it solves** | Long tasks eventually fill the context. Near the threshold the plugin writes a handoff checkpoint, opens a new session and puts the *original requirement / goal / done / pending / constraints* at the top of it. |
-| **安装 / Install** | `dsh plugin --profile <profile> add dsh-infinite-context-orchestrator`（或本地目录 / or a local checkout），然后重启 DSH。 |
-| **配置 / Configure** | 设置 → 任务自动换窗：启用、按模型设「窗口 + 阈值」、自动换新窗口。 / Settings → Task Auto-Handoff: enable, per-model window + threshold, auto-handoff. |
-| **许可证 / License** | MIT（[LICENSE](LICENSE)） · 需要 DSH ≥ 0.2.1-rc.2、Node ≥ 20 |
+| **启用** | 总开关。关掉后插件完全不动作。 |
+| **按模型设窗口与阈值** | 点「读取模型列表」后，每个模型一行：左边填**真实提示预算**（= n_ctx − max_tokens），右边填**该模型的阈值**。两项都留空 = 该模型不设置（插件不介入）。只能管理这里列出的模型。 |
+| **自动换新窗口** | **默认关闭**。关闭时只提醒你，你确认后才换；开启后到阈值就自动换。 |
+
+**「换窗后提醒旧窗口」**（默认开）：换完窗口会在**旧窗口的对话末尾**追加一条「任务已转移」消息
+（写进会话日志、**不唤醒**旧窗口——避免它为了回一句话又开一轮、和新窗口抢模型）。
+里面写明新会话 id、检查点路径与「本窗口只用于回顾」。关掉则完全不打扰旧窗口。
+
+**「自动换窗次数上限」**（默认 10，0 = 不限制）：单次启动内最多自动换几次窗。
+本地小窗口模型每个窗口只能干 2-3 万 tokens，一次长任务要换好几次；调太小会在第二个窗口就停住自动交接。
+
+**「交接后收尾旧待办」**（默认开）：交接成功后，把旧窗口里未完成的待办标成「已完成」。
+不这么做的话，旧窗口交接完就停手，那条「进行中」会一直挂着，看起来像交接失败。
+
+**「简报由谁写」** 是高级里的一个选项：
+
+- **插件模板**（默认）：从结构化事实（目标/待办/已完成/用户约束）生成，确定性、零额外模型调用。
+- **模型撰写**：换窗前多跑一次模型调用，由模型写一份叙述性交接（做了什么、为什么这么做、下一步）；
+  失败会自动回退模板，**不会阻断换窗**。模型只写叙述部分，「待办 / 检查点路径 / 收尾指令」
+  仍由插件拼，保证新窗口拿得到可执行的下一步。
+
+其余「高级」项一般不用动（简报字数上限、检查点大小上限、项目摘要预留、检查点存放目录），
+每个都能「恢复默认」，改完即时生效。三个数值项都带 **「不限制」**：勾上就不做裁剪
+（简报条数与字数、检查点体积、项目摘要长度都不再受限）。**用模型撰写时建议直接把简报上限
+设成「不限制」**——几千字简报对 128K 窗口只是零头，没必要省。
+
+### 到临界时会看到什么
+
+一条**插件提示**（不是你的发言，也不打断当前工作）：
+
+```
+【任务自动换窗】上下文占用 82.3%（…），已达阈值 80%。
+将写入检查点并换窗；autoHandoff=false，等你确认后调用 infinite_context_handoff 执行。
+```
+
+- **自动换窗关着**：你说一句「换窗」或「调用 infinite_context_handoff」，它才会执行完整流程。
+- **自动换窗开着**：直接换，换完当前会话也会收到一条「已完成、新会话是 xxx」的说明。
+- 想随时看状态（占用率、阈值、最近检查点），让助手调用 `infinite_context_status`。
+
+### 新窗口是怎么被"启动"和"督促"的
+
+- 换窗是**插件**做的（写检查点 → 建新会话 → 注入简报 → 发首条消息），不是模型自己切换会话。
+- 新窗口的**第一步**由插件用 `followup` 发一条消息来触发（这条消息会唤醒 agent、开启第一轮）。
+- 「第一件事做什么」额外以 **developer 消息**写进新会话历史开头（优先级高于普通用户消息）；
+  若宿主不接受该形状，会自动退化成把锚点拼在简报最前面。
+- **督工**：新窗口的首条回复如果只说话不动手（没有工具调用，且回复很短或以问句结尾），
+  插件会补发一次纠正，点名待办第一项——只补一次，不会刷屏。
+
+### 常见问题
+
+**为什么显示 1,000,000 tokens？**
+模型配置里没声明 `contextWindow` 时，宿主用适配器默认值。想让它贴近真实可用窗口，
+给模型补 `contextWindow` 即可（否则百分比会偏小，阈值不容易触发）。
+
+**设置里没有「任务自动换窗」这一页 / 页面是空的？**
+先硬刷新页面（`Ctrl+Shift+R`）。还是不行，按 `F12` 看控制台里 `[dsh-infinite-context]` 开头的日志。
+
+**换了配置怎么生效？**
+在设置页保存即可（它会自己 reconcile）。手改 profile 的 `cordis.patch.yml` 后，需要重启 DSH
+或重跑一次 `dsh plugin add <本目录>`。
+
+**升级/改了插件代码之后？**
+只改界面（`client.js`）→ 硬刷新页面（`Ctrl+Shift+R`）。改了宿主部分（`lib/index.js`，比如
+新增了设置页要用的接口）→ **必须重启 DSH**，运行中的进程不会热加载插件模块。
+
+**换了窗，检查点在哪？**
+默认 `~/.dsh/task-checkpoints/orchestrator/`：`handoffs/<会话id>.json` 是最新一份（上一版留在
+`<同名>.previous`），`handoffs/history/` 是不可变历史，`latest.json` 是指针。
+
+**会不会把密钥写进检查点？**
+不会。写入前会脱敏（`sk-*`、GitHub/AWS token、JWT、`Bearer`、`password=`、PEM 私钥、本机用户名路径）。
+
+**换窗会不会丢东西？**
+检查点写失败会**直接放弃换窗**（fail-closed），留在原会话；新会话创建失败则保留检查点并给出路径。
+
+### 致谢
+
+这个插件的**判据、契约、边界**几乎都来自四个 DSH 插件，作者与仓库如下（均为 MIT，版权归各自作者）：
+
+| 插件 | 作者 | 仓库 | 借用的是 |
+|---|---|---|---|
+| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | `contextPressure` 投影与判档口径、notice 消息形状、换窗的 Session API 路径 |
+| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 检查点原子写与 `.previous` 保留的持久化契约、脱敏思路 |
+| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | `PROGRESS.md` 的区域结构（项目级摘要来源） |
+| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | 「换窗必须新会话」的边界、schemastery Config 与 fail-loud 的写法 |
+| `dsh-context-window`（设计笔记） | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | 其 `docs/handoff.md` 整理的 DSH API 地图 |
+
+具体到"哪一行代码借鉴了哪个契约"、以及本插件与它们的边界，写在 **[CREDITS.md](CREDITS.md)**。
+本项目源码为独立实现，运行时**零依赖**（不 import 上述任何模块）。
+
+### 配套建议：约束单次 `read` 的读入量
+
+小窗口模型（如本地 64K）里，**一次 `read` 大文件就能顶掉半个窗口**，而且**读进来的内容会常驻上下文**
+（之后每一轮请求都会重新发送，不会"读完就清理"）。实测：一步连读三个文件（合计约 82 KB）
+让上下文从 1.4 万跳到约 5 万 tokens，紧接着的请求被服务端 `400 prompt + max_tokens exceeds n_ctx` 打断。
+
+两种防法：
+
+1. **DSH 侧限流**（全局生效）：profile 的 `cordis.patch.yml` 里给内置 `tool-fs` 加上限——
+   `readLimit`（行）、`readMaxBytes`（字节）、`readMaxLineLength`（单行字符），默认分别是 2000 / 50 KB / 2000。
+2. **指令侧约束**（本机目前用这个）：全局 `~/.dsh/AGENTS.md` 要求「一次只读 1 个文件、≤ 400 行 / ≤ 12 KB，
+   超出用 `offset`/`limit` 续读；禁止一个 step 连读多个大文件」。
+
+另外本插件也做了兜底：`step/end`、`tool/result` 之后会让占用缓存失效，所以**一步之内暴涨也能在下一个
+pre-step 被看到**，只要阈值低于服务端报错线，就会在发请求前换窗。
+### 给要改它的人
+
+原理、闭环实现细节、设置页的三条硬约束、离线测试与本机实测记录，全部在
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**；发布前检查清单见 **[PUBLISHING.md](PUBLISHING.md)**；
+版本变更见 **[CHANGELOG.md](CHANGELOG.md)**；许可见 **[LICENSE](LICENSE)**（MIT）。
+
+```powershell
+pnpm install --ignore-scripts
+pnpm run build          # esbuild → lib/index.js；tsc → lib/types
+pnpm run smoke          # Host 60 项离线断言
+pnpm run smoke:client   # Client 9 项离线断言
+pnpm run check          # 上面全部 + 类型检查（发布门禁）
+```
+
+---
+
+## English
+
+> 📖 First time here, or not in the mood for jargon? Read [USERGUIDE.md](USERGUIDE.md) (plain-language walkthrough, currently Chinese).
+
+**The problem it solves**: long tasks eventually fill the context, and then you have to summarise the progress, open a new session and explain everything again.
+
+**What it does**: when the context approaches its limit, it first writes the current progress into a **handoff checkpoint**, then opens a **new session**, and puts the *original requirement / current goal / completed work / pending todos / constraints* at the very top of that new session. The new window therefore knows what to continue from its first sentence, and you do not have to repeat yourself.
+
+---
+
+### Installation: copy install vs link install
+
+`dsh plugin add <dir>` creates a **junction (link)**: DSH actually loads the files in your workspace, so reorganising the workspace can break the installed plugin.
+
+This plugin ships a copy-install script, which keeps an independent copy inside the plugin directory and leaves the workspace as a mirror source:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1              # default profile=desktop
+powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      # dry run
+```
+
+After that, the workflow for code changes is: `pnpm run build` → run the script again → restart DSH.
+
+### How to use
+
+Open **Settings → Task Auto-Handoff**. There are three switches:
+
+| Option | Description |
+|---|---|
+| **Enabled** | Master switch. When off, the plugin does nothing at all. |
+| **Per-model window & threshold** | After clicking "Load model list", each model gets a row: the left field is the **real prompt budget** (= `n_ctx` − reserved output tokens), the right field is **that model's threshold**. Leaving both empty means "not set for this model" (the plugin stays out of it). Only the models listed here are managed. |
+| **Auto-handoff** | **Off by default.** When off you are only warned and hand off after you confirm; when on it hands off automatically at the threshold. |
+
+**"Notify the old window after handoff"** (on by default): after handing off, a "task has moved" message is appended to the **end of the old window's conversation** (written into the session log, **without waking** that window — so it does not run an extra turn and compete with the new window for the model). It states the new session id, the checkpoint path, and that the old window is for review only. Turn it off to leave the old window completely alone.
+
+**"Max auto-handoffs"** (default 10, 0 = unlimited): how many automatic handoffs are allowed within one plugin load. A small local model can only do 20-30k tokens of work per window, so a long task needs several; setting this too low stops the chain at the second window.
+
+**"Close out old todos after handoff"** (on by default): after a successful handoff, unfinished todos in the old window are marked completed. Otherwise the old window keeps showing an "in progress" task that will never finish, which looks like a failed handoff.
+
+**"Who writes the brief"** is an advanced option:
+
+- **Plugin template** (default): generated from structured facts (goal / todos / done / user constraints); deterministic, no extra model call.
+- **Model-authored**: one extra model call before the handoff, letting the model write a narrative handoff (what was done, why, what is next). Failure falls back to the template and **never blocks the handoff**. The model only writes the narrative part; todos / checkpoint path / closing instructions are still assembled by the plugin, so the new window always gets an actionable next step.
+
+The remaining advanced items usually need no changes (brief length cap, checkpoint size cap, project-summary reserve, checkpoint directory); each has "restore default" and applies immediately. The three numeric items have an **"unlimited"** option: ticking it disables trimming (brief items and length, checkpoint size, project summary length). **If you use model-authored briefs, set the brief cap to "unlimited"** — a few thousand characters is a rounding error for a 128K window.
+
+### Language
+
+The main controls of the settings page follow the DSH interface language: **Chinese and English** are built in, and the other locales (ja / es / fr / de / ru / pt) fall back to English. Long explanatory text and the prompts the plugin sends to the model are currently Chinese.
+
+### What you see at the threshold
+
+A **plugin notice** (not your message, and it does not interrupt the current work):
+
+```
+【任务自动换窗】上下文占用 82.3%（…），已达阈值 80%。
+将写入检查点并换窗；autoHandoff=false，等你确认后调用 infinite_context_handoff 执行。
+```
+
+- **Auto-handoff off**: say "hand off" or call `infinite_context_handoff`, and only then does it run the full loop.
+- **Auto-handoff on**: it hands off directly, and the current session also receives a "done, new session is xxx" note.
+- To check the state at any time (usage, threshold, latest checkpoint), ask the assistant to call `infinite_context_status`.
+
+### How the new window is started and supervised
+
+- The handoff is done by the **plugin** (write checkpoint → create session → inject brief → send first message); the model does not switch sessions by itself.
+- The **first step** of the new window is triggered by the plugin sending one message with `followup` (that message wakes the agent and starts the first turn).
+- "What to do first" is additionally written at the start of the new session's history as a **developer message** (higher priority than an ordinary user message); if the host rejects that shape, it degrades to prefixing the anchor to the brief.
+- **Nudging**: if the new window's first reply only talks and does not act (no tool call, and the reply is short or ends with a question), the plugin sends one corrective message naming the first todo — only once, never repeatedly.
+
+### FAQ
+
+**Why does it show 1,000,000 tokens?**
+When the model config does not declare `contextWindow`, the host falls back to the adapter default. Add `contextWindow` to the model to make it match the real window (otherwise the percentage is understated and the threshold is hard to reach).
+
+**There is no "Task Auto-Handoff" page in Settings / the page is empty?**
+Hard-refresh the page (`Ctrl+Shift+R`) first. If it persists, open `F12` and look for console logs starting with `[dsh-infinite-context]`.
+
+**How do configuration changes take effect?**
+Saving in the settings page is enough (it reconciles itself). If you edit the profile's `cordis.patch.yml` by hand, restart DSH or re-run `dsh plugin add <this directory>`.
+
+**After upgrading or changing plugin code?**
+UI only (`client.js`) → hard-refresh the page (`Ctrl+Shift+R`). Host side (`lib/index.js`, e.g. a new endpoint needed by the settings page) → **DSH must be restarted**; a running process does not hot-load plugin modules.
+
+**Where is the checkpoint after a handoff?**
+Default `~/.dsh/task-checkpoints/orchestrator/`: `handoffs/<session-id>.json` is the latest one (the previous version is kept as `<same-name>.previous`), `handoffs/history/` is immutable history, and `latest.json` is a pointer.
+
+**Will secrets end up in the checkpoint?**
+No. Everything is redacted before writing (`sk-*`, GitHub/AWS tokens, JWTs, `Bearer`, `password=`, PEM private keys, home-directory paths).
+
+**Can a handoff lose work?**
+If the checkpoint cannot be written, the handoff is **abandoned** (fail-closed) and you stay in the original session; if session creation fails, the checkpoint is kept and its path is reported.
+
+### Credits
+
+The criteria, contracts and boundaries of this plugin come from four DSH plugins (all MIT, copyright belongs to their authors):
+
+| Plugin | Author | Repository | What was borrowed |
+|---|---|---|---|
+| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | the `contextPressure` projection and threshold semantics, notice message shape, the Session API path used for handoff |
+| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | atomic checkpoint writes, the `.previous` retention contract, the redaction approach |
+| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | the `PROGRESS.md` section structure (source of the project-level summary) |
+| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | the "handoff must be a new session" boundary, schemastery Config and fail-loud style |
+| `dsh-context-window` (design notes) | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | the DSH API map collected in its `docs/handoff.md` |
+
+Which line borrowed which contract, and where this plugin's boundary lies, is documented in **[CREDITS.md](CREDITS.md)** (Chinese). This project is an independent implementation with **zero runtime dependencies** (it imports none of the modules above).
+
+### Related advice: cap how much a single `read` pulls in
+
+On small-window models (say local 64K), **one `read` of a large file can eat half the window**, and **whatever was read stays in the context** (it is re-sent on every later request; it is not cleaned up after reading). Measured: reading three files in one step (about 82 KB in total) moved the context from 14k to about 50k tokens, and the next request was rejected by the server with `400 prompt + max_tokens exceeds n_ctx`.
+
+Two ways to prevent it:
+
+1. **Throttle on the DSH side** (global): add caps to the built-in `tool-fs` in the profile's `cordis.patch.yml` — `readLimit` (lines), `readMaxBytes` (bytes), `readMaxLineLength` (characters per line); defaults are 2000 / 50 KB / 2000.
+2. **Constrain by instruction** (what we currently use locally): the global `~/.dsh/AGENTS.md` requires "read only 1 file at a time, ≤ 400 lines / ≤ 12 KB, continue with `offset`/`limit`; never read several large files in one step".
+
+The plugin also has a safety net: after `step/end` and `tool/result` the occupancy cache is invalidated, so **a jump within one step is visible at the next pre-step**, and as long as the threshold sits below the server's error line, the handoff happens before the request is sent.
+
+### For maintainers
+
+The internals, the closed-loop implementation, the three hard constraints of the settings page, the offline tests and the on-machine test log are all in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (Chinese). The pre-release checklist is in **[PUBLISHING.md](PUBLISHING.md)**, version history in **[CHANGELOG.md](CHANGELOG.md)**, and the license in **[LICENSE](LICENSE)** (MIT).
+
+```powershell
+pnpm install --ignore-scripts
+pnpm run build          # esbuild → lib/index.js; tsc → lib/types
+pnpm run smoke          # Host: 60 offline assertions
+pnpm run smoke:client   # Client: 9 offline assertions
+pnpm run check          # all of the above plus typecheck (release gate)
+```
