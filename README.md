@@ -93,8 +93,8 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      #
 
 - 换窗是**插件**做的（写检查点 → 建新会话 → 注入简报 → 发首条消息），不是模型自己切换会话。
 - 新窗口的**第一步**由插件用 `followup` 发一条消息来触发（这条消息会唤醒 agent、开启第一轮）。
-- 「第一件事做什么」额外以 **developer 消息**写进新会话历史开头（优先级高于普通用户消息）；
-  若宿主不接受该形状，会自动退化成把锚点拼在简报最前面。
+- 「第一件事做什么」以**交接锚点**的形式拼在简报最前面（和简报一起进 system prompt），
+  新窗口从第一个 token 就知道先做什么。
 - **督工**：新窗口的首条回复如果只说话不动手（没有工具调用，且回复很短或以问句结尾），
   插件会补发一次纠正，点名待办第一项——只补一次，不会刷屏。
 
@@ -127,7 +127,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      #
 
 ### 致谢
 
-这个插件的**判据、契约、边界**几乎都来自四个 DSH 插件，作者与仓库如下（均为 MIT，版权归各自作者）：
+这个插件的**判据、契约、边界**几乎都来自四个 DSH 插件 —— **它们都不用安装**，只是设计参考。作者与仓库如下（均为 MIT，版权归各自作者）：
 
 | 插件 | 作者 | 仓库 | 借用的是 |
 |---|---|---|---|
@@ -238,7 +238,7 @@ A **plugin notice** (not your message, and it does not interrupt the current wor
 
 - The handoff is done by the **plugin** (write checkpoint → create session → inject brief → send first message); the model does not switch sessions by itself.
 - The **first step** of the new window is triggered by the plugin sending one message with `followup` (that message wakes the agent and starts the first turn).
-- "What to do first" is additionally written at the start of the new session's history as a **developer message** (higher priority than an ordinary user message); if the host rejects that shape, it degrades to prefixing the anchor to the brief.
+- "What to do first" comes as a **handoff anchor** prefixed to the brief (injected with it through the system prompt), so the new window knows the first action from its first token.
 - **Nudging**: if the new window's first reply only talks and does not act (no tool call, and the reply is short or ends with a question), the plugin sends one corrective message naming the first todo — only once, never repeatedly.
 
 ### FAQ
@@ -266,7 +266,7 @@ If the checkpoint cannot be written, the handoff is **abandoned** (fail-closed) 
 
 ### Credits
 
-The criteria, contracts and boundaries of this plugin come from four DSH plugins (all MIT, copyright belongs to their authors):
+The criteria, contracts and boundaries of this plugin come from four DSH plugins (none of them needs to be installed; they are design references only; all MIT, copyright belongs to their authors):
 
 | Plugin | Author | Repository | What was borrowed |
 |---|---|---|---|

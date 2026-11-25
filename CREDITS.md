@@ -7,11 +7,13 @@
 
 ## 一、上游插件
 
+> 下面四项都是**设计与契约上的老师**，一个都不需要安装；本插件运行时只用 DSH 内置服务。
+
 | 插件 | 作者 | 仓库 | 版本（开发时） | 许可 | 与本项目的关系 |
 |---|---|---|---|---|---|
-| **dsh-context-relay** | rezon-aki `<rezon-aki@users.noreply.github.com>` | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | 0.5.0 | MIT | **依赖（预算判据）** |
-| **dsh-task-checkpoint-guard** | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 0.2.1 | MIT | **依赖（持久化契约）** |
-| **dsh-project-progress** | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | 0.1.0-rc.5 | MIT | **依赖（项目级摘要）** |
+| **dsh-context-relay** | rezon-aki `<rezon-aki@users.noreply.github.com>` | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | 0.5.0 | MIT | **设计参考**（判据口径，不调用） |
+| **dsh-task-checkpoint-guard** | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 0.2.1 | MIT | **契约对齐**（不 import） |
+| **dsh-project-progress** | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | 0.1.0-rc.5 | MIT | **可选读取**（有 PROGRESS.md 才读） |
 | **dsh-context-window** | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | 1.0.0 | MIT | **边界对齐（不调用）** |
 | dsh-context-window（设计/交接文档版） | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | 0.0.1 | MIT | **文档参考**（DSH API 地图与交接笔记） |
 

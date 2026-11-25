@@ -7,19 +7,22 @@ DSH（DeepSeek Harness）插件：把「上下文快满了」这件事变成一�
 
 ---
 
-## 1. 与 4 个底层插件的关系
+## 1. 与四个上游项目的关系（设计参考，**不是**运行时依赖）
 
-| 基线插件 | 关系 | 明确复用了什么 |
+这四个插件是判据、契约与边界的老师，但**一个都不用安装**。实测：本机 profile 里只装了本插件与
+`dsh-sandbox-allowlist`，上述四个都没有，换窗照常工作。运行时只用 DSH 内置服务：
+`tools` / `systemPrompt` / `agents` / `sessionController` / `agentPresets` / `sessionTitle` /
+`sessionProjections` / `tokenMeter` / `llm` / `connection`（contextPressure 投影由基础插件 dsh-token-meter 提供）。
+
+| 上游项目 | 关系 | 实际复用了什么 |
 |---|---|---|
-| `dsh-context-relay` | **依赖（预算判据）** | ① `contextPressure` 投影（`{contextWindow, pressureTokens, projectedTokens}`）是占用率的第一证据，判档口径与 relay 的 `readPressure` 一致；② 换窗用**同一条 Session API 路径**（`sessionController.create` 优先、`agents.create + agentPresets.mount` 兜底），和 `relay_handoff` 是同一实现路线；③ notice 的消息形状沿用 relay 的 `source:{kind:<生产者自有>, form:'notice', summary}` 约定（DSH v4 行准入要求）。**不**调用 `relay_handoff` 工具本身：relay 的交接正文是首条 **user** 消息，而本插件要求简报进 **system prompt**。 |
-| `dsh-task-checkpoint-guard` | **依赖（持久化契约）** | 磁盘布局与持久化算法：默认同根 `${DSH_HOME}/task-checkpoints`、临时文件 → `fsync` → `rename` 的原子替换、`<target>.previous` 保留上一版、目录 fsync 容错、进程内按目标串行化。本插件只占 `task-checkpoints/orchestrator/`，不与 guard 的 `tasks/` `sessions/` 冲突。**不** import 它的模块：它的 `package.json` 只导出 `.`，且 profile 里解析不到 `@deepseek-ai/*`（见第 6 节），所以复刻同一份契约而不是硬链内部文件。 |
-| `dsh-project-progress` | **依赖（项目级摘要）** | 读它的 `PROGRESS.md`（`## 项目档案` + `## 进展时间线`），把项目级上下文按预算压缩后接在交接简报末尾；两条注入**共享** `handoffBriefMaxChars` 预算，任务级简报优先（`projectProgressReserveChars` 控制预留）。它自己的 `systemPrompt.section(order:60)` 仍然生效，本插件的简报排在 `order:55`，因此顺序是「任务交接简报 → 项目进展」。 |
-| `dsh-context-window` | **边界对齐（不调用）** | 只对齐同一个硬约束：**换窗必须是新会话**，不在同一会话里切 preset。它做的是会话内窗口覆盖（`new_context` / notes），本插件做的是跨会话交接；两者可以共存，互不覆盖配置。它的 `src/config.ts` 是 schemastery 用法与「加载期 fail-loud」的参考实现。 |
+| `dsh-context-relay` | 设计参考（不调用） | ① 占用判档的**口径**（先看投影压力，再退回 token 计量）；② 换窗走**同一条 Session API 路径**（`sessionController.create` 优先，`agents.create + agentPresets.mount` 兜底）；③ notice 的消息形状沿用 `source:{kind, form:'notice', summary}` 约定（会话格式 v4 的行准入要求）。**不**调用它的 `relay_handoff`：relay 的交接正文是首条 **user** 消息，本插件要求简报进 **system prompt**。 |
+| `dsh-task-checkpoint-guard` | 契约对齐（不 import） | 磁盘布局与持久化算法：同根 `${DSH_HOME}/task-checkpoints`、临时文件 → fsync → rename 的原子替换、`<target>.previous` 保留上一版、目录 fsync 容错、进程内按目标串行化。本插件只占 `task-checkpoints/orchestrator/`，不碰它的 `tasks/` `sessions/`。 |
+| `dsh-project-progress` | 可选读取（文件级） | 只有工作区里**存在** `PROGRESS.md` 时才读它（`## 项目档案` + `## 进展时间线`），把项目级上下文压进简报末尾；两条注入共享 `handoffBriefMaxChars` 预算，任务级优先（`projectProgressReserveChars` 控制预留）。没装、没这个文件时静默跳过。 |
+| `dsh-context-window` / CooperZhuang 的设计笔记 | 边界对齐（不调用） | 硬约束：**换窗必须是新会话**，不在同一会话里切 preset。它的 `src/config.ts` 也是 schemastery 用法与「加载期 fail-loud」的参考实现。 |
 
-> 结论：**4 个都是依赖（必须先装），其中 3 个被实质复用**。本插件自身**零运行时依赖** ——
-> `lib/index.js` 只 import Node 内建模块（schemastery 在构建时被打进产物）。
-
----
+> 结论：**四个都不用装**。本插件自身**零第三方依赖** —— `lib/index.js` 只 import Node 内建模块
+> （schemastery 在构建时打进产物）。
 
 ## 2. 闭环流程
 
@@ -212,11 +215,11 @@ dsh plugin --profile <profile> add "<插件所在文件夹>"
 | 设置页座位 | 用 `cordis_inspect_query(client, Slots)` 读**页面真实注册表**：`settings.section` 的 occupants 里应有 `id: 'infinite-context'`，且 `plugins.row.config` 里**不应**有本插件的条目（那是串页的来源） |
 | 设置页读写 | 同源 `fetch` ↔ 宿主 exact 路由 ↔ `configEditor`；主区只有「启用 / 阈值 / 自动换窗」三件，高级项默认折叠；GET 失败时显示状态码并禁用控件 |
 | 检查点/新窗/注入/fail-closed/防失控 | `npm run smoke` 的 **60 项**离线断言（真实 fs、真实原子写、真实 `.previous`、假 ctx） |
-| Client 半件 | `npm run smoke:client` 的 **9 项**离线断言（bundle 加载、单座位、三件主区、滑块、`applied` 不回弹、不限制哨兵、三种降级、主题令牌） |
+| Client 半件 | `npm run smoke:client` 的 **9 项**离线断言（bundle 加载、单座位、三件主区、按模型双输入、`applied` 不回弹、不限制哨兵、三种降级、主题令牌） |
 | profile 恢复副本 | 完整 profile patch 另存一份在 `docs/profile-patch-desktop.good.yml`（重装/事故后直接复制回 `~/.dsh/profiles/<profile>/cordis.patch.yml`） |
 
 > 本机当前窗口显示 **1,000,000 tokens**：模型配置里没声明 `contextWindow`，落到 adapter 默认值。
-> 想让百分比更贴近真实可用窗口，按 `dsh-context-window` README 的办法给模型补 `contextWindow`
+> 想让百分比更贴近真实可用窗口，在设置页「按模型设窗口与阈值」里填真实窗口（本地模型务必填）
 > （这和它记的是同一个坑）。占比相对变大后，阈值判断才有实际意义。
 
 ---
@@ -253,7 +256,7 @@ dsh plugin --profile <profile> add "<插件所在文件夹>"
 ```
 
 如果显示「窗口大小未知」，说明模型没声明 `contextWindow`，百分比阈值不会触发 ——
-去模型配置里补 `contextWindow`（这也是 `dsh-context-window` README 里记的同一个坑）。
+去设置页「按模型设窗口与阈值」里给这个模型填真实窗口（= n_ctx 减去 max_tokens）。
 
 **第 3 步：等一条插件 notice**
 
