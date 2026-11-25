@@ -1,5 +1,7 @@
 # 任务自动换窗（dsh-infinite-context-orchestrator）
 
+![设置页：任务自动换窗](docs/screenshot.png)
+
 > 📖 **第一次用、或者不太想看术语？先读 [USERGUIDE.md](USERGUIDE.md)**（大白话版：它是干什么的、怎么装、怎么设置、常见问题）。
 
 **它解决什么问题**：长任务聊久了，上下文会满，你就得手动总结、重开会话、再把进度讲一遍。
