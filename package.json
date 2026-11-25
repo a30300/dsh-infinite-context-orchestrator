@@ -70,11 +70,11 @@
   "author": "dsh-infinite-context-orchestrator contributors",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator.git"
+    "url": "git+https://github.com/a30300/dsh-infinite-context-orchestrator.git"
   },
-  "homepage": "https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator#readme",
+  "homepage": "https://github.com/a30300/dsh-infinite-context-orchestrator#readme",
   "bugs": {
-    "url": "https://github.com/YOUR_GITHUB_USER/dsh-infinite-context-orchestrator/issues"
+    "url": "https://github.com/a30300/dsh-infinite-context-orchestrator/issues"
   },
   "devDependencies": {
     "@deepseek-ai/schemastery": "^3.19.0",
