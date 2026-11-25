@@ -11,7 +11,6 @@ Keep a long task going across context limits: write a checkpoint, open a new ses
 
 ## 中文
 
-
 > 📖 **第一次用、或者不太想看术语？先读 [USERGUIDE.md](USERGUIDE.md)**（大白话版：它是干什么的、怎么装、怎么设置、常见问题）。
 
 **它解决什么问题**：长任务聊久了，上下文会满，你就得手动总结、重开会话、再把进度讲一遍。
@@ -125,20 +124,48 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      #
 **换窗会不会丢东西？**
 检查点写失败会**直接放弃换窗**（fail-closed），留在原会话；新会话创建失败则保留检查点并给出路径。
 
-### 致谢
+### 致谢与来源
 
-这个插件的**判据、契约、边界**几乎都来自四个 DSH 插件 —— **它们都不用安装**，只是设计参考。作者与仓库如下（均为 MIT，版权归各自作者）：
+这个插件的**判据、契约、边界**几乎都来自四个 DSH 插件 —— **它们都不用安装**，只是设计参考。
+作者与仓库如下（均为 MIT，版权归各自作者）：
 
-| 插件 | 作者 | 仓库 | 借用的是 |
-|---|---|---|---|
-| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | `contextPressure` 投影与判档口径、notice 消息形状、换窗的 Session API 路径 |
-| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 检查点原子写与 `.previous` 保留的持久化契约、脱敏思路 |
-| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | `PROGRESS.md` 的区域结构（项目级摘要来源） |
-| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | 「换窗必须新会话」的边界、schemastery Config 与 fail-loud 的写法 |
-| `dsh-context-window`（设计笔记） | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | 其 `docs/handoff.md` 整理的 DSH API 地图 |
+| 插件 | 作者 | 仓库 | 版本 | 与本项目的关系 |
+|---|---|---|---|---|
+| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | 0.5.0 | 设计参考：`contextPressure` 判档口径、notice 消息形状、换窗的 Session API 路径 |
+| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 0.2.1 | 契约对齐：原子写 + `.previous` 保留、同根目录约定、脱敏思路 |
+| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | 0.1.0-rc.5 | 可选读取：工作区有 `PROGRESS.md` 时把「档案 + 时间线尾部」压进简报末尾 |
+| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | 1.0.0 | 边界对齐：「换窗必须新会话」、schemastery Config 与加载期 fail-loud 写法 |
+| `dsh-context-window`（设计笔记） | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | 0.0.1 | 文档参考：其 `docs/handoff.md` 整理的 DSH API 地图 |
 
-具体到"哪一行代码借鉴了哪个契约"、以及本插件与它们的边界，写在 **[CREDITS.md](CREDITS.md)**。
-本项目源码为独立实现，运行时**零依赖**（不 import 上述任何模块）。
+具体借用了什么（不夸大、也不含糊）：
+
+- **`contextPressure` 投影**：`{ contextWindow, pressureTokens, projectedTokens }` 是占用率的第一证据。
+  `src/budget.ts` 的读取顺序（projectedTokens → pressureTokens → tokenMeter.totalTokens）与 relay 的
+  `readPressure` 同口径 —— 这套字段名与语义由 relay 定义。注意：投影本身由 **DSH 基础插件 `dsh-token-meter`**
+  提供，装了本插件就能读到，不需要再装 relay。
+- **分档口径**：本插件按模型配置的阈值要低于 relay 的硬线（`relayRatio ≈ 阈值 + 10`），
+  「留 10 个百分点给写盘」的约定来自 relay 的设计。
+- **notice 消息形状**：`source: { kind: <生产者自有>, form: 'notice', summary }`。会话格式 v4 的行准入
+  要求生产者自有 kind，这条经验与形状沿用 relay 的 `noticeMessage()`。
+- **换窗的 Session API 路径**：`sessionController.create({ cwd, agentPreset })` 优先、
+  `agents.create + agentPresets.mount` 兜底、建完轮询 `agents.list()` 等 live —— 与 relay 的 `relay_handoff`
+  是同一条路线（它趟过的坑：裸 `agents.create` 会在首轮触发 provider `INVALID_REQUEST`）。
+- **原子写**：同目录唯一临时文件 → `fsync` → `rename` 就位；`<target>.previous` 保留上一版；目录 fsync 失败
+  按 `EINVAL/EISDIR/EPERM/EACCES/EBADF` 容忍；Windows 不允许覆盖 rename 时用"先挪走再就位"兜底 ——
+  这套算法与容错清单以 guard 的 `src/storage.js` 为参考实现。
+- **目录根**：默认 `${DSH_HOME}/task-checkpoints`，本插件只占 `orchestrator/` 子目录，与 guard 的
+  `tasks/` `sessions/` 并存不冲突。
+- **脱敏**：写入前清洗凭据的思路（以及"检查点会被另一个窗口读到，所以必须假定字符串里有密钥"）来自 guard 的 `redact.js`。
+- **`PROGRESS.md` 的区域结构**：`## 项目档案`（稳定事实）+ `## 进展时间线`（追加式记录）由 project-progress 维护；
+  本插件只读这份文件，并与任务级简报共享 `handoffBriefMaxChars` 预算。它的 `systemPrompt.section(order: 60)`
+  保持不变，本插件的简报用 `order: 55` 排在它之前。
+- **硬约束**：换窗必须是**新会话**，不在同一会话内切 preset —— 与 dsh-context-window 的设计一致，本项目严格遵守。
+- **不调用/不 import**：本项目不调用 relay 的 `relay_handoff`（它把交接正文作为首条 **user** 消息，本插件要求进
+  **system prompt**），也不 import 上述任何模块。
+
+**版权**：本项目源码为独立实现，没有复制上述项目的代码；运行时零第三方依赖（`lib/index.js` 只 import Node 内建）。
+上述插件与 DSH 本体各自保留原始版权与许可（均 MIT），本项目同样以 [MIT](LICENSE) 发布。
+如果你认为标注有遗漏或不准确，欢迎开 issue 纠正 —— 标注错误本身就是需要修的 bug。
 
 ### 配套建议：约束单次 `read` 的读入量
 
@@ -155,11 +182,12 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1 -WhatIf      #
 
 另外本插件也做了兜底：`step/end`、`tool/result` 之后会让占用缓存失效，所以**一步之内暴涨也能在下一个
 pre-step 被看到**，只要阈值低于服务端报错线，就会在发请求前换窗。
+
 ### 给要改它的人
 
 原理、闭环实现细节、设置页的三条硬约束、离线测试与本机实测记录，全部在
-**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**；发布前检查清单见 **[PUBLISHING.md](PUBLISHING.md)**；
-版本变更见 **[CHANGELOG.md](CHANGELOG.md)**；许可见 **[LICENSE](LICENSE)**（MIT）。
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**；版本变更见 **[CHANGELOG.md](CHANGELOG.md)**；
+许可见 **[LICENSE](LICENSE)**（MIT）。发布前自检直接跑 `pnpm run check`。
 
 ```powershell
 pnpm install --ignore-scripts
@@ -266,17 +294,53 @@ If the checkpoint cannot be written, the handoff is **abandoned** (fail-closed) 
 
 ### Credits
 
-The criteria, contracts and boundaries of this plugin come from four DSH plugins (none of them needs to be installed; they are design references only; all MIT, copyright belongs to their authors):
+The criteria, contracts and boundaries of this plugin come from four DSH plugins. **None of them needs to be
+installed** — they are design references only. All are MIT; copyright belongs to their authors.
 
-| Plugin | Author | Repository | What was borrowed |
-|---|---|---|---|
-| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | the `contextPressure` projection and threshold semantics, notice message shape, the Session API path used for handoff |
-| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | atomic checkpoint writes, the `.previous` retention contract, the redaction approach |
-| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | the `PROGRESS.md` section structure (source of the project-level summary) |
-| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | the "handoff must be a new session" boundary, schemastery Config and fail-loud style |
-| `dsh-context-window` (design notes) | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | the DSH API map collected in its `docs/handoff.md` |
+| Plugin | Author | Repository | Version | Relationship to this project |
+|---|---|---|---|---|
+| `dsh-context-relay` | rezon-aki | [rezon-aki/dsh-context-relay](https://github.com/rezon-aki/dsh-context-relay) | 0.5.0 | design reference: the `contextPressure` thresholds, notice message shape, Session API path for handoff |
+| `dsh-task-checkpoint-guard` | jlnkx5200-beep | [jlnkx5200-beep/dsh-task-checkpoint-guard](https://github.com/jlnkx5200-beep/dsh-task-checkpoint-guard) | 0.2.1 | contract alignment: atomic write + `.previous` retention, shared root directory, redaction approach |
+| `dsh-project-progress` | Jolly-J | [Jolly-J/dsh-project-progress](https://github.com/Jolly-J/dsh-project-progress) | 0.1.0-rc.5 | optional read: when the workspace has a `PROGRESS.md`, its profile + timeline tail go at the end of the brief |
+| `dsh-context-window` | qq-24 | [qq-24/dsh-context-window](https://github.com/qq-24/dsh-context-window) | 1.0.0 | boundary alignment: "a handoff must be a new session", schemastery Config and load-time fail-loud style |
+| `dsh-context-window` (design notes) | CooperZhuang | [CooperZhuang/dsh-context-window](https://github.com/CooperZhuang/dsh-context-window) | 0.0.1 | documentation reference: the DSH API map collected in its `docs/handoff.md` |
 
-Which line borrowed which contract, and where this plugin's boundary lies, is documented in **[CREDITS.md](CREDITS.md)** (Chinese). This project is an independent implementation with **zero runtime dependencies** (it imports none of the modules above).
+What was actually borrowed, without exaggeration:
+
+- **The `contextPressure` projection**: `{ contextWindow, pressureTokens, projectedTokens }` is the first evidence
+  of occupancy. The read order in `src/budget.ts` (projectedTokens → pressureTokens → tokenMeter.totalTokens)
+  matches relay's `readPressure`; the field names and semantics are relay's. Note that the projection itself is
+  provided by the **base plugin `dsh-token-meter`** — installing this plugin is enough, relay is not needed.
+- **Threshold positioning**: this plugin's per-model threshold should stay below relay's hard line
+  (`relayRatio ≈ threshold + 10`); leaving ten points for writing the checkpoint is relay's design.
+- **Notice message shape**: `source: { kind: <producer-owned>, form: 'notice', summary }`. Session format v4
+  requires a producer-owned kind; the shape follows relay's `noticeMessage()`.
+- **Session API path for handoff**: `sessionController.create({ cwd, agentPreset })` first,
+  `agents.create + agentPresets.mount` as fallback, then polling `agents.list()` for live — the same route as
+  relay's `relay_handoff`, including the trap it found for us (a bare `agents.create` makes the first turn fail
+  with provider `INVALID_REQUEST`).
+- **Atomic writes**: unique temp file in the same directory → `fsync` → `rename`; `<target>.previous` keeps the
+  previous version; directory fsync failures are tolerated for `EINVAL/EISDIR/EPERM/EACCES/EBADF`; on Windows,
+  where an existing file cannot be replaced by rename, "move aside then rename" is the fallback. The algorithm
+  and its error list follow guard's `src/storage.js`.
+- **Root directory**: default `${DSH_HOME}/task-checkpoints`; this plugin only writes `orchestrator/`, so it sits
+  next to guard's `tasks/` and `sessions/` without conflict.
+- **Redaction**: the idea of scrubbing credentials before writing (plus "the checkpoint will be read by another
+  window, so assume every string carries a key") comes from guard's `redact.js`.
+- **`PROGRESS.md` section structure**: `## Project profile` (stable facts) and `## Progress timeline` (append-only)
+  are maintained by project-progress. This plugin only reads that file and shares the `handoffBriefMaxChars`
+  budget with the task-level brief; its `systemPrompt.section(order: 60)` is untouched, and this plugin's brief
+  uses `order: 55` so it comes first.
+- **Hard boundary**: a handoff must be a **new session**, never a preset switch inside one session — the same
+  boundary as dsh-context-window, strictly followed here.
+- **Not called, not imported**: this project does not call relay's `relay_handoff` (it sends the handoff body as
+  the first **user** message, whereas this plugin needs the brief in the **system prompt**), and imports none of
+  the modules above.
+
+**Copyright**: this is an independent implementation; no code was copied, and there are no third-party runtime
+dependencies (`lib/index.js` imports Node built-ins only). The plugins above and DSH itself keep their original
+copyright and license (all MIT); this project is also released under [MIT](LICENSE).
+If anything here is missing or inaccurate, please open an issue — a wrong attribution is a bug too.
 
 ### Related advice: cap how much a single `read` pulls in
 
@@ -291,7 +355,7 @@ The plugin also has a safety net: after `step/end` and `tool/result` the occupan
 
 ### For maintainers
 
-The internals, the closed-loop implementation, the three hard constraints of the settings page, the offline tests and the on-machine test log are all in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (Chinese). The pre-release checklist is in **[PUBLISHING.md](PUBLISHING.md)**, version history in **[CHANGELOG.md](CHANGELOG.md)**, and the license in **[LICENSE](LICENSE)** (MIT).
+The internals, the closed-loop implementation, the three hard constraints of the settings page, the offline tests and the on-machine test log are all in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (Chinese). Version history is in **[CHANGELOG.md](CHANGELOG.md)**, and the license in **[LICENSE](LICENSE)** (MIT). Run `pnpm run check` before publishing.
 
 ```powershell
 pnpm install --ignore-scripts

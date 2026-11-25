@@ -2,7 +2,7 @@
 #
 # 致谢：本插件的判据与契约来自 dsh-context-relay（rezon-aki）、
 # dsh-task-checkpoint-guard（jlnkx5200-beep）、dsh-project-progress（Jolly-J）、
-# dsh-context-window（qq-24）；均为 MIT，详见 CREDITS.md。
+# dsh-context-window（qq-24）；均为 MIT，详见 README.md 的「致谢与来源」。
 #
 # 安装（二选一）：
 #   1) npm：dsh plugin --profile <profile> add dsh-infinite-context-orchestrator

@@ -36,7 +36,7 @@
 ### 它需要别的插件吗
 
 不需要。0.1.0 起本插件是独立实现：占用测量走 DSH 自带的投影/计量服务，检查点写自己的子目录，
-不依赖任何第三方插件。CREDITS.md 里列的那四个上游插件是"设计上的老师"（判据与契约参考过它们），
+不依赖任何第三方插件。README 的「致谢与来源」里列的那四个上游插件是"设计上的老师"（判据与契约参考过它们），
 **不用安装**。
 
 ### 再装本插件
@@ -211,6 +211,5 @@ powershell -ExecutionPolicy Bypass -File scripts\install-copy.ps1，然后重启
 
 - 功能全貌与安装细节：[README.md](README.md)
 - 它到底怎么实现的、踩过哪些坑：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- 它借用了谁的成果（四个底层插件的作者）：[CREDITS.md](CREDITS.md)
-- 要发布/分享给别人：[PUBLISHING.md](PUBLISHING.md)
+- 它借用了谁的成果（四个上游项目的作者）：见 [README.md](README.md) 的「致谢与来源」
 - 改了什么：[CHANGELOG.md](CHANGELOG.md)

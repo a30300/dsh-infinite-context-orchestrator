@@ -22,7 +22,6 @@
     "README.md",
     "USERGUIDE.md",
     "LICENSE",
-    "CREDITS.md",
     "CHANGELOG.md",
     "docs",
     "scripts/repair-sessions.mjs"
