@@ -233,7 +233,7 @@ dsh plugin --profile <profile> add "<插件所在文件夹>"
 | 设置页座位 | 用 `cordis_inspect_query(client, Slots)` 读**页面真实注册表**：`settings.section` 的 occupants 里应有 `id: 'infinite-context'`，且 `plugins.row.config` 里**不应**有本插件的条目（那是串页的来源） |
 | 设置页读写 | 同源 `fetch` ↔ 宿主 exact 路由 ↔ `configEditor`；主区只有「启用 / 按模型设窗口与阈值 / 自动换新窗口」三件，高级项默认折叠；GET 失败时显示状态码并禁用控件 |
 | 检查点/新窗/注入/fail-closed/防失控 | `npm run smoke` 的 **60 项**离线断言（真实 fs、真实原子写、真实 `.previous`、假 ctx） |
-| Client 半件 | `npm run smoke:client` 的 **9 项**离线断言（bundle 加载、单座位、三件主区、按模型双输入、`applied` 不回弹、不限制哨兵、三种降级、主题令牌） |
+| Client 半件 | `npm run smoke:client` 的 **10 项**离线断言（bundle 加载、单座位、三件主区、按模型双输入、`applied` 不回弹、不限制哨兵、三种降级、主题令牌） |
 | profile 恢复副本 | 完整 profile patch 另存一份在 `docs/profile-patch-desktop.good.yml`（重装/事故后直接复制回 `~/.dsh/profiles/<profile>/cordis.patch.yml`） |
 
 > 本机当前窗口显示 **1,000,000 tokens**：模型配置里没声明 `contextWindow`，落到 adapter 默认值。
@@ -362,7 +362,7 @@ src/
   types.ts       只用到的那部分 DSH 运行时形状
 client.js         Client 半件：设置页（只挂 settings.section；同源 fetch 读写 + 宿主主题令牌）
 scripts/smoke.mjs         Host 离线冒烟（假 ctx，60 项断言，含设置路由、「不限制」差分与模型撰写简报）
-scripts/smoke-client.mjs  Client 离线冒烟（假 loader/React/fetch，9 项断言）
+scripts/smoke-client.mjs  Client 离线冒烟（假 loader/React/fetch，10 项断言）
 docs/profile-patch-desktop.good.yml  profile patch 的完整备份（事故恢复用）
 cordis.patch.yml  装配行 + 全部默认值
 ```
@@ -371,7 +371,7 @@ cordis.patch.yml  装配行 + 全部默认值
 pnpm install --ignore-scripts
 pnpm run build          # esbuild bundle → lib/index.js；tsc → lib/types
 pnpm run smoke          # Host：60 项离线断言
-pnpm run smoke:client   # Client：9 项离线断言
+pnpm run smoke:client   # Client：10 项离线断言
 ```
 
 ---
@@ -619,7 +619,7 @@ the row id `infinite-context-orchestrator`.
 | Settings seat | `cordis_inspect_query(client, Slots)` reads the **real page registry**: the occupants of `settings.section` must contain `id: 'infinite-context'`, and `plugins.row.config` must **not** contain this plugin (that was the leak source) |
 | Settings read/write | Same-origin `fetch` ↔ host exact route ↔ `configEditor`; the main area has only "enabled / per-model window and threshold / auto-handoff", advanced collapsed by default; on GET failure the page shows the status code and disables the controls |
 | Checkpoint / new window / injection / fail-closed / runaway protection | `npm run smoke`, the **60** offline assertions (real fs, real atomic write, real `.previous`, fake ctx) |
-| Client half | `npm run smoke:client`, the **9** offline assertions (bundle load, single seat, three main items, per-model dual inputs, `applied` no snap-back, unlimited sentinel, three degradations, theme tokens) |
+| Client half | `npm run smoke:client`, the **10** offline assertions (bundle load, single seat, three main items, per-model dual inputs, `applied` no snap-back, unlimited sentinel, three degradations, theme tokens) |
 | Profile backup copy | A full profile patch is kept at `docs/profile-patch-desktop.good.yml` (copy it back to `~/.dsh/profiles/<profile>/cordis.patch.yml` after a reinstall or an accident) |
 
 > The current window on this machine shows **1,000,000 tokens**: the model config does not declare
@@ -753,7 +753,7 @@ src/
   types.ts       only the DSH runtime shapes that are actually used
 client.js         the Client half: settings page (settings.section only; same-origin fetch I/O + host theme tokens)
 scripts/smoke.mjs         Host offline smoke (fake ctx, 60 assertions, includes the settings route, the "unlimited" diff and model-authored briefs)
-scripts/smoke-client.mjs  Client offline smoke (fake loader/React/fetch, 9 assertions)
+scripts/smoke-client.mjs  Client offline smoke (fake loader/React/fetch, 10 assertions)
 docs/profile-patch-desktop.good.yml  a full profile patch backup (for accident recovery)
 cordis.patch.yml  assembly row + all defaults
 ```
@@ -762,5 +762,5 @@ cordis.patch.yml  assembly row + all defaults
 pnpm install --ignore-scripts
 pnpm run build          # esbuild bundle → lib/index.js; tsc → lib/types
 pnpm run smoke          # Host: 60 offline assertions
-pnpm run smoke:client   # Client: 9 offline assertions
+pnpm run smoke:client   # Client: 10 offline assertions
 ```

@@ -24,7 +24,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 - **旧窗口提示**：交接后在旧窗口 **append** 一条「任务已转移」的 user 消息（不唤醒旧窗口）。
 - **设置页**：单文件 `client.js`、单 `settings.section` 座位；主区（启用 / 按模型窗口与阈值 /
   自动换窗）+ 高级（次数上限、待办收尾、简报作者、体积/字数上限、检查点目录）。
-- **界面语言**：设置页主区文案跟随 DSH 的 locale（内置 zh / en，其余语言回落 en）；
+- **界面语言**：设置页主区文案跟随 DSH 的 locale（内置 zh / en，其余语言回落 en；切换语言即时生效）；
   插件发给模型的提示与长说明仍为中文。
 - **工具**：`infinite_context_status`（状态与距离阈值）、`infinite_context_handoff`（手动换窗）。
 
@@ -65,7 +65,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 - **Settings page**: one file `client.js`, one `settings.section` seat; main area (enabled / per-model
   window and threshold / auto-handoff) plus advanced (handoff cap, todo wrap-up, brief author, size and
   length caps, checkpoint directory).
-- **UI language**: the main area follows DSH's locale (zh and en built in, other locales fall back to en);
+- **UI language**: the main area follows DSH's locale (zh and en built in, other locales fall back to en; switching takes effect immediately);
   prompts sent to the model and the long explanatory text are still Chinese.
 - **Tools**: `infinite_context_status` (state and distance to threshold), `infinite_context_handoff`
   (manual handoff).

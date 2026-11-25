@@ -201,7 +201,7 @@ pre-step 被看到**，只要阈值低于服务端报错线，就会在发请求
 
 ### 给要改它的人
 
-原理、闭环实现细节、设置页的三条硬约束、离线测试与本机实测记录，全部在
+原理、闭环实现细节、设置页的五条硬约束、离线测试与本机实测记录，全部在
 **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**；版本变更见 **[CHANGELOG.md](CHANGELOG.md)**；
 许可见 **[LICENSE](LICENSE)**（MIT）。发布前自检直接跑 `pnpm run check`。
 
@@ -209,7 +209,7 @@ pre-step 被看到**，只要阈值低于服务端报错线，就会在发请求
 pnpm install --ignore-scripts
 pnpm run build          # esbuild → lib/index.js；tsc → lib/types
 pnpm run smoke          # Host 60 项离线断言
-pnpm run smoke:client   # Client 9 项离线断言
+pnpm run smoke:client   # Client 10 项离线断言
 pnpm run check          # 上面全部 + 类型检查（发布门禁）
 ```
 
@@ -217,7 +217,7 @@ pnpm run check          # 上面全部 + 类型检查（发布门禁）
 
 ## English
 
-> 📖 First time here, or not in the mood for jargon? Read [USERGUIDE.md](USERGUIDE.md) (plain-language walkthrough, currently Chinese).
+> 📖 First time here, or not in the mood for jargon? Read [USERGUIDE.md](USERGUIDE.md) (plain-language walkthrough, Chinese and English).
 
 **The problem it solves**: long tasks eventually fill the context, and then you have to summarise the progress, open a new session and explain everything again.
 
@@ -393,12 +393,12 @@ The plugin also has a safety net: after `step/end` and `tool/result` the occupan
 
 ### For maintainers
 
-The internals, the closed-loop implementation, the three hard constraints of the settings page, the offline tests and the on-machine test log are all in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (Chinese). Version history is in **[CHANGELOG.md](CHANGELOG.md)**, and the license in **[LICENSE](LICENSE)** (MIT). Run `pnpm run check` before publishing.
+The internals, the closed-loop implementation, the five hard constraints of the settings page, the offline tests and the on-machine test log are all in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (Chinese). Version history is in **[CHANGELOG.md](CHANGELOG.md)**, and the license in **[LICENSE](LICENSE)** (MIT). Run `pnpm run check` before publishing.
 
 ```powershell
 pnpm install --ignore-scripts
 pnpm run build          # esbuild → lib/index.js; tsc → lib/types
 pnpm run smoke          # Host: 60 offline assertions
-pnpm run smoke:client   # Client: 9 offline assertions
+pnpm run smoke:client   # Client: 10 offline assertions
 pnpm run check          # all of the above plus typecheck (release gate)
 ```
